@@ -1,0 +1,168 @@
+﻿@page "/login"
+@using DxBlazorApplicationScheduler.Components.Layout
+@using DxBlazorApplicationScheduler.Login
+@using DxBlazorApplicationScheduler.Models
+@using Microsoft.Data.SqlClient
+@using Microsoft.EntityFrameworkCore
+
+@rendermode InteractiveServer
+
+@layout LoginLayout
+@inject NavigationManager navManager
+@inject HttpClient httpClient
+@inject IHttpContextAccessor httpContextAccessor
+@inject IJSRuntime JS
+
+@implements IDisposable
+
+<div class="card cw-480" style="width:480px">
+    <EditForm Model=@data
+              OnValidSubmit="Authenticate"
+              Context="EditFormContext"
+              FormName="LoginForm">
+        <DataAnnotationsValidator />
+        <div class="card-header text-center py-3">
+            <h4>Wilkommen bei Luki</h4>
+            <p class="tm-8 mb-0 fw-normal fs-825">
+                Melden Sie sich an, um Luki in Aktion zu sehen.
+            </p>
+        </div>
+        <div class="card-body">
+
+            <DxFormLayout>
+                <DxFormLayoutItem ColSpanMd="12">
+                    <InputText @bind-Value="data.UserName" class="form-control" placeholder="Benutzername" />
+                    <ValidationMessage For="() => data.UserName" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12">
+                    <InputText type="password" @bind-Value="data.Password " class="form-control" placeholder="Passwort" />
+                    <ValidationMessage For="() => data.Password" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12">
+                    <DxButton CssClass="w-100"
+                              Text="Login"
+                              RenderStyle="ButtonRenderStyle.Primary"
+                              SubmitFormOnClick="true" />
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </EditForm>
+
+</div>
+
+
+<DxToastProvider Name="Overview"
+                 MaxToastCount="4"
+                 AnimationType="ToastAnimationType.Slide"
+                 HorizontalAlignment="HorizontalAlignment.Center"
+                 DisplayTime="TimeSpan.Zero"
+                 Width="320px" />
+
+
+<form id="loginForm" method="post" action="/account/login">
+    <input type="hidden" name="username" id="usernameField" />
+    <input type="hidden" name="password" id="passwordField" />
+</form>
+
+<script>
+    let loginInstance = null;
+
+    window.registerLoginInstance = function (dotNetHelper) {
+        loginInstance = dotNetHelper;
+    };
+
+    window.submitLoginForm = async function (username, password) {
+        // Fill the hidden form fields
+        document.getElementById('usernameField').value = username;
+        document.getElementById('passwordField').value = password;
+
+        // Use Fetch API to check login before full post
+        const response = await fetch('/account/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `UserName=${encodeURIComponent(username)}&Password=${encodeURIComponent(password)}`
+        });
+
+        if (response.ok) {
+            // If login successful, now submit the real form to get cookie + redirect
+            document.getElementById('loginForm').submit();
+        } else {
+            // Login failed – notify Blazor
+            const errorText = await response.text();
+            if (loginInstance) {
+                loginInstance.invokeMethodAsync('ShowLoginError', errorText);
+            }
+        }
+    };
+</script>
+
+
+@code {
+
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromForm]
+    public LoginViewModel data { get; set; } = new();
+
+    [Inject] IToastNotificationService ToastService { get; set; }
+
+    private DotNetObjectReference<Login>? objRef;
+
+
+    protected override void OnInitialized()
+    {
+        
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {  
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("registerLoginInstance", objRef);
+        }
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+
+    [JSInvokable]
+    public Task ShowLoginError(string message)
+    {
+        ToastService.ShowToast(new ToastOptions
+            {
+                ProviderName = "Overview",
+                ThemeMode = ToastThemeMode.Pastel,
+                RenderStyle = ToastRenderStyle.Warning,
+                Text = string.IsNullOrWhiteSpace(message)
+                        ? "Login failed. Please check your credentials."
+                        : $"Login failed: {message}"
+            });
+
+        return Task.CompletedTask;
+    }
+
+    private async Task Authenticate()
+    {
+        try
+        {
+            // if success then redirect to landing
+            await JS.InvokeVoidAsync("submitLoginForm", data.UserName, data.Password);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowToast(new ToastOptions()
+                {
+                    ProviderName = "Overview",
+                    ThemeMode = ToastThemeMode.Pastel,
+                    RenderStyle = ToastRenderStyle.Warning,
+                    Text = $"An error occurred while trying to log in: {ex.Message}"
+                });
+        }
+    }
+}

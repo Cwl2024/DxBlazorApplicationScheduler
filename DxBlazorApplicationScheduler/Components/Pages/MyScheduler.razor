@@ -1,0 +1,335 @@
+﻿@page "/myscheduler"
+@using DevExpress.Blazor
+@using DxBlazorApplicationScheduler.Models
+@using DxBlazorApplicationScheduler.SchedulerInfo
+@using DxBlazorApplicationScheduler.Services
+@using Microsoft.AspNetCore.Identity.UI.Services
+@using Microsoft.EntityFrameworkCore
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using System.ComponentModel.DataAnnotations
+
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbContextFactory
+@inject EmailService EmailService
+@inject IServiceProvider ServiceProvider
+
+@implements IDisposable
+
+<DxPopup @bind-Visible="showForm" ShowCloseButton="true" Width="auto" Height="auto" title="Add Resource">
+    <EditForm Model=@resource
+              OnValidSubmit="Save"
+              Context="EditFormContext"
+              FormName="AddResource">
+        <DataAnnotationsValidator />
+        <div class="card-header text-center py-3">
+            <h4>Enter New Resource</h4>
+        </div>
+        <div class="card-body">
+            <DxFormLayout>
+                <DxFormLayoutItem ColSpanMd="12">
+                    <InputText @bind-Value="resource.Name" class="form-control" placeholder="Resource Name" />
+                    <ValidationMessage For="() => resource.Name" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12">
+                    <InputNumber @bind-Value="resource.UserId" class="form-control" placeholder="User Id" />
+                    <ValidationMessage For="() => resource.UserId" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12">
+                    <InputNumber @bind-Value="resource.GroupId" class="form-control" placeholder="Group Id" />
+                    <ValidationMessage For="() => resource.GroupId" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem>
+                    <DxComboBox Data="@Colors"
+                                @bind-Value="@resource.BackgroundCss"
+                                TextFieldName="@nameof(ColorOption.Name)"
+                                NullText="Select a color..."
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                CssClass="cw-480">
+                    </DxComboBox>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem ColSpanMd="12">
+                    <DxButton CssClass="w-100"
+                              Text="Add Resource"
+                              RenderStyle="ButtonRenderStyle.Primary"
+                              SubmitFormOnClick="true" />
+                </DxFormLayoutItem>
+            </DxFormLayout>
+        </div>
+    </EditForm>
+</DxPopup>
+
+
+
+@* <AuthorizeView Policy="RequireAdministratorRole">
+    <Authorized>
+        <button class="btn btn-success" @onclick="() => showForm = true">+ Add Resource</button>
+    </Authorized>
+    <NotAuthorized>
+        <p>ADD RESOURCE BUTTON GOES HERE Not Authorized @context.User.IsInRole("Administratoren") @context.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value </p>
+    </NotAuthorized>
+</AuthorizeView> *@
+
+<div class="scheduler-toolbar d-flex align-items-center px-2 py-1">
+    
+    <DxComboBox Data="@groupOptions"
+                @bind-Value="@currentGroupType"
+                ValueFieldName="Value"
+                TextFieldName="Text"
+                CssClass="w-200" />
+    <DxButton Context="AddResourceButtonContext" @onclick="() => showForm = true">+ Add Resource</DxButton>
+
+
+</div>
+
+
+<DxScheduler @bind-StartDate="@StartDate"
+             GroupType="@currentGroupType"
+             CssClass="demo-sc-size"
+             DataStorage="@dataStorage"
+             AppointmentFormShowing="OnAppointmentFormShowing"
+             AllowCreateAppointment="canCreate"
+             AllowEditAppointment="canEdit"
+             AllowDeleteAppointment="canDelete"
+             AppointmentInserting="ValidateAppointment"
+             AppointmentInserted="@OnAppointmentInserted"
+             AppointmentUpdating="ValidateAppointment"
+             AppointmentUpdated="@OnAppointmentUpdated"
+             AppointmentRemoved="@OnAppointmentDeleted"
+             AppointmentFormMode="SchedulerAppointmentFormMode.EditForm"
+             ValidateEditForm="true">
+
+
+    <Views>
+        <DxSchedulerWeekView></DxSchedulerWeekView>
+        <DxSchedulerTimelineView Duration="@TimeSpan.FromHours(72)" CellMinWidth="100">
+            <Scales>
+                <DxSchedulerTimeScale Unit="@SchedulerTimeScaleUnit.Day" UnitCount="1"></DxSchedulerTimeScale>
+                <DxSchedulerTimeScale Unit="@SchedulerTimeScaleUnit.Hour" UnitCount="4"></DxSchedulerTimeScale>
+            </Scales>
+        </DxSchedulerTimelineView>
+        <DxSchedulerDayView></DxSchedulerDayView>
+        <DxSchedulerMonthView></DxSchedulerMonthView>
+    </Views>
+    
+    <AppointmentFormLayout>
+        <DxSchedulerSubjectFormLayoutItem />
+        <DxSchedulerAllDayFormLayoutItem />
+        <DxSchedulerStartDateFormLayoutItem />
+        <DxSchedulerStartTimeFormLayoutItem />
+        <DxSchedulerEndDateFormLayoutItem />
+        <DxSchedulerEndTimeFormLayoutItem />
+        <DxSchedulerRepeatFormLayoutItem />
+        <DxSchedulerLocationFormLayoutItem />
+        <DxSchedulerStatusFormLayoutItem />
+        <DxSchedulerResourceFormLayoutItem />
+        <DxSchedulerDescriptionFormLayoutItem />
+
+        <DxSchedulerCustomFormLayoutItem ColSpanMd="12">
+            <Template>
+                <ValidationSummary />
+            </Template>
+        </DxSchedulerCustomFormLayoutItem>
+    </AppointmentFormLayout>
+
+    <AppointmentFormHeaderTemplate>
+        <DxSchedulerSaveAppointmentChangesButton />
+        <DxSchedulerDeleteAppointmentButton />
+        <DxSchedulerDiscardAppointmentChangesButton />
+    </AppointmentFormHeaderTemplate>
+</DxScheduler>
+
+
+
+@code {
+
+    // CLASSES
+    // used for validation
+    public class CustomAppointmentFormInfo : SchedulerAppointmentFormInfo
+    {
+        public CustomAppointmentFormInfo(DxSchedulerAppointmentItem AppointmentItem,
+                DxSchedulerDataStorage DataStorage) : base(AppointmentItem, DataStorage) { }
+
+        // Just add the [Required] attribute to the properties you want to validate
+        [Required]
+        public override string Subject
+        {
+            get { return base.Subject; }
+            set { base.Subject = value; }
+        }
+
+        [Required(ErrorMessage = "The Resource field is required.")]
+        public override DxSchedulerResourceItem ResourceItem { get => base.ResourceItem; set => base.ResourceItem = value; }
+    }
+
+    public class ColorOption
+    {
+        public string Name { get; set; }
+        public string Hex { get; set; }
+    }
+
+    public class GroupOption
+    {
+        public SchedulerGroupType Value { get; set; }
+        public string Text { get; set; }
+    }
+
+    // initialized in OnInitializedAsync
+    List<GroupOption> groupOptions;
+    SchedulerGroupType currentGroupType;
+    IEnumerable<ColorOption> Colors { get; set; }
+
+    // session-wide authentication
+    private AuthenticationState authenticationState;
+    // private bool canCreate => authenticationState.User.IsInRole("Administratoren");
+    // private bool canEdit => authenticationState.User.IsInRole("Administratoren");
+    // private bool canDelete => authenticationState.User.IsInRole("Administratoren");
+    // private bool canView => authenticationState.User.Identity.IsAuthenticated;
+    private bool canCreate => HasClaim("CanCreateAppointment", "true");
+    private bool canEdit => HasClaim("CanEditAppointment", "true");
+    private bool canDelete => HasClaim("CanDeleteAppointment", "true");
+    private bool canView => authenticationState.User.Identity.IsAuthenticated;
+
+    private bool showForm = false;
+    private Resource resource = new Resource();
+
+    private DateTime StartDate { get; set; } = DateTime.Today;
+    private AppDbContext AppDbContext { get; set; }
+    private DxSchedulerDataStorage dataStorage = new DxSchedulerDataStorage()
+        {
+            AppointmentsSource = null,
+            AppointmentMappings = new DxSchedulerAppointmentMappings()
+            {
+                Type = "AppointmentType",
+                Start = "StartDate",
+                End = "EndDate",
+                Subject = "Caption",
+                AllDay = "AllDay",
+                Location = "Location",
+                Description = "Description",
+                LabelId = "Label",
+                StatusId = "Status",
+                RecurrenceInfo = "Recurrence",
+                ResourceId = "ResourceId"
+            },
+            ResourcesSource = null,
+            ResourceMappings = new DxSchedulerResourceMappings()
+            {
+                Id = "Id",
+                Caption = "Name",
+                BackgroundCssClass = "BackgroundCss",
+                TextCssClass = "TextCss"
+            }
+            // EnableMultipleResources = true
+        };
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        Colors = new List<ColorOption> {
+            new ColorOption { Name = "Red", Hex = "#e74c3c" },
+            new ColorOption { Name = "Green", Hex = "#27ae60" },
+            new ColorOption { Name = "Blue", Hex = "#3498db" },
+            new ColorOption { Name = "Orange", Hex = "#e67e22" },
+            new ColorOption { Name = "Purple", Hex = "#9b59b6" },
+            new ColorOption { Name = "Yellow", Hex = "#f1c40f" },
+            new ColorOption { Name = "Pink", Hex = "#ff69b4" },
+            new ColorOption { Name = "Brown", Hex = "#8b4513" },
+            new ColorOption { Name = "Gray", Hex = "#7f8c8d" }
+        };
+        currentGroupType = SchedulerGroupType.None;
+        groupOptions = new List<GroupOption> {
+        new() { Value = SchedulerGroupType.None, Text = "No Grouping" },
+        new() { Value = SchedulerGroupType.Date, Text = "By Date" },
+        new() { Value = SchedulerGroupType.Resource, Text = "By Resource" }
+    };
+
+
+        authenticationState = await ServiceProvider.GetRequiredService<AuthenticationStateProvider>().GetAuthenticationStateAsync();
+
+        AppDbContext = await DbContextFactory.CreateDbContextAsync();
+        dataStorage.AppointmentsSource = AppDbContext.Appointments.ToList();
+        dataStorage.ResourcesSource = AppDbContext.Resources.ToList();
+    }
+
+    private bool HasClaim(string type, string value = null)
+    {
+        var claim = authenticationState.User.Claims.FirstOrDefault(c => c.Type == type);
+        if (claim == null) return false;
+        return value == null || claim.Value.Equals(value, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async void ValidateAppointment(SchedulerAppointmentOperationEventArgs e)
+    {
+        var resouce = e.Appointment.ResourceId;
+
+        if (resouce == null || !canCreate)
+        {
+            e.Cancel = true;
+        }
+    }
+
+    void OnAppointmentFormShowing(SchedulerAppointmentFormEventArgs args)
+    {
+        args.FormInfo = new CustomAppointmentFormInfo(args.Appointment, dataStorage);
+    }
+
+    // crud operations
+    private async Task OnAppointmentInserted(DxSchedulerAppointmentItem e)
+    {
+        AppDbContext.Add(e.SourceObject);
+        await AppDbContext.SaveChangesAsync();
+        // await EmailService.SendEmailAsync(
+        //     // can use a query to get the email from user via resourceId
+        //     "to@example.com",
+        //     $"Appointment: {e.Subject} Successfully Created",
+        //     EmailService.GenerateAppointmentHtml(e.Subject, e.Start, e.End, e.Location));
+    }
+
+    private async Task OnAppointmentUpdated(DxSchedulerAppointmentItem e)
+    {
+        AppDbContext.Update(e.SourceObject);
+        await AppDbContext.SaveChangesAsync();
+        // await EmailService.SendEmailAsync(
+        //     "to@example.com",
+        //     $"Appointment: {e.Subject} Successfully Updated",
+        //     EmailService.GenerateAppointmentHtml(e.Subject, e.Start, e.End, e.Location));
+    }
+
+    private async Task OnAppointmentDeleted(DxSchedulerAppointmentItem e)
+    {
+        AppDbContext.Remove(e.SourceObject);
+        await AppDbContext.SaveChangesAsync();
+        // await EmailService.SendEmailAsync(
+        //     "to@example.com",
+        //     $"Appointment: {e.Subject} Successfully Deleted",
+        //     EmailService.GenerateAppointmentHtml(
+        //         e.Subject, e.Start, e.End, e.Location));
+    }
+
+    public void Dispose()
+    {
+        AppDbContext?.Dispose();
+    }
+
+
+    private async Task AddResource(Resource resource)
+    {
+        resource.UserId = 1;
+        resource.IsGroup = true;
+        resource.TextCss = "dxbl-white-font-color";
+        AppDbContext.Resources.Add(resource);
+        await AppDbContext.SaveChangesAsync();
+        dataStorage.ResourcesSource = AppDbContext.Resources.ToList();
+        StateHasChanged();
+    }
+
+    private async Task Save()
+    {
+        await AddResource(resource);
+        showForm = false;
+        resource = new Resource(); // reset the resource object
+    }
+}

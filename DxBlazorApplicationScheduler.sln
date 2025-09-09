@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35013.160
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DxBlazorApplicationScheduler", "DxBlazorApplicationScheduler\DxBlazorApplicationScheduler.csproj", "{38B0E4B0-F8D8-4B81-B01A-F5FFB19AA8D8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DxBlazorApplicationScheduler.Client", "DxBlazorApplicationScheduler.Client\DxBlazorApplicationScheduler.Client.csproj", "{A95DB56B-FD10-438F-84A6-03B81ABC452D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{38B0E4B0-F8D8-4B81-B01A-F5FFB19AA8D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38B0E4B0-F8D8-4B81-B01A-F5FFB19AA8D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38B0E4B0-F8D8-4B81-B01A-F5FFB19AA8D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38B0E4B0-F8D8-4B81-B01A-F5FFB19AA8D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A95DB56B-FD10-438F-84A6-03B81ABC452D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A95DB56B-FD10-438F-84A6-03B81ABC452D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A95DB56B-FD10-438F-84A6-03B81ABC452D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A95DB56B-FD10-438F-84A6-03B81ABC452D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FC8B5D5B-FE3B-442D-A65F-5DAA81764FD0}
+	EndGlobalSection
+EndGlobal
