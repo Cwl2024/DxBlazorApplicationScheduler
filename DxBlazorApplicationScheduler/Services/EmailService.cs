@@ -34,7 +34,7 @@ namespace DxBlazorApplicationScheduler.Services
                 Console.WriteLine("Connected to SMTP");
 
 
-                await smtp.AuthenticateAsync(_settings.SmtpUser, _settings.SmtpPass);
+                // await smtp.AuthenticateAsync(_settings.SmtpUser, _settings.SmtpPass);
                 await smtp.SendAsync(message);
                 await smtp.DisconnectAsync(true);
             }
@@ -47,7 +47,7 @@ namespace DxBlazorApplicationScheduler.Services
         }
 
 
-        public string GenerateAppointmentHtml(string name, DateTime start, DateTime end, string location)
+        public string GenerateAppointmentHtml(string name, DateTime start, DateTime end, string location, string description, string updateType)
         {
             return $@"
     <!DOCTYPE html>
@@ -87,14 +87,14 @@ namespace DxBlazorApplicationScheduler.Services
     </head>
     <body>
       <div class='container'>
-        <div class='header'>Appointment Created</div>
+        <div class='header'>Appointment {updateType}</div>
         <div class='content'>
           Hello,<br><br>
-          Your appointment with <strong>{name}</strong> has been successfully created.<br><br>
+          Your appointment: <strong>{name}</strong> has been successfully {updateType}.<br><br>
           <strong>Date:</strong> {start:yyyy-MM-dd}<br>
           <strong>Time:</strong> {start:HH:mm} - {end:HH:mm}<br>
-          <strong>Location:</strong> {location}<br><br>
-          If you have any questions or need to reschedule, please contact us.
+          <strong>Location:</strong> {location}<br>
+          <strong>Description:</strong> {description}<br><br>
         </div>
         <div class='footer'>
           This is an automated message. Please do not reply.

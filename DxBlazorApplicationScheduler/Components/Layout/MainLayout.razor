@@ -23,10 +23,17 @@
                         <NavLink id="menu-top" class="button-link hidden" onclick="(document.getElementById('sidebar').classList.toggle('auto-expanded'), document.getElementById('menu-top').classList.toggle('hidden'))">
                             <DxButton RenderStyle="@ButtonRenderStyle.Dark" RenderStyleMode="@ButtonRenderStyleMode.Text" CssClass="menu-button" IconCssClass="icon icon-menu"></DxButton>
                         </NavLink>
-                        @if(!string.IsNullOrEmpty(NavigationManager.ToBaseRelativePath(NavigationManager.Uri))) {
+                        @if (!string.IsNullOrEmpty(NavigationManager.ToBaseRelativePath(NavigationManager.Uri)))
+                        {
                             <NavLink href="/" class="button-link">
                                 <DxButton RenderStyle="@ButtonRenderStyle.Dark" Text="Back to Home" RenderStyleMode="@ButtonRenderStyleMode.Text" CssClass="menu-button" IconCssClass="icon icon-back"></DxButton>
                             </NavLink>
+                            @*      <DxButton RenderStyle="@ButtonRenderStyle.Dark"
+                        Text="Back to Home"
+                        RenderStyleMode="@ButtonRenderStyleMode.Text"
+                        CssClass="menu-button"
+                        IconCssClass="icon icon-back"
+                        Click="@GoHome" /> *@
                         }
                     </div>
                     @Body
@@ -35,3 +42,10 @@
         </Items>
     </DxGridLayout>
 </div>
+
+@* @code {
+    private void GoHome()
+    {
+        NavigationManager.NavigateTo("/"); // client-side navigation, preserves authentication
+    }
+} *@

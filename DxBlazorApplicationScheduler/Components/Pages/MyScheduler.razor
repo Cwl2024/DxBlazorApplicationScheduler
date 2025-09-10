@@ -3,6 +3,8 @@
 @using DxBlazorApplicationScheduler.Models
 @using DxBlazorApplicationScheduler.SchedulerInfo
 @using DxBlazorApplicationScheduler.Services
+@using MailKit.Net.Smtp
+@using MailKit.Security
 @using Microsoft.AspNetCore.Identity.UI.Services
 @using Microsoft.EntityFrameworkCore
 
@@ -61,8 +63,6 @@
     </EditForm>
 </DxPopup>
 
-
-
 @* <AuthorizeView Policy="RequireAdministratorRole">
     <Authorized>
         <button class="btn btn-success" @onclick="() => showForm = true">+ Add Resource</button>
@@ -72,8 +72,8 @@
     </NotAuthorized>
 </AuthorizeView> *@
 
-<div class="scheduler-toolbar d-flex align-items-center px-2 py-1">
-    
+@* <div class="scheduler-toolbar d-flex align-items-center px-2 py-1">
+
     <DxComboBox Data="@groupOptions"
                 @bind-Value="@currentGroupType"
                 ValueFieldName="Value"
@@ -82,7 +82,7 @@
     <DxButton Context="AddResourceButtonContext" @onclick="() => showForm = true">+ Add Resource</DxButton>
 
 
-</div>
+</div> *@
 
 
 <DxScheduler @bind-StartDate="@StartDate"
@@ -113,12 +113,12 @@
         <DxSchedulerDayView></DxSchedulerDayView>
         <DxSchedulerMonthView></DxSchedulerMonthView>
     </Views>
-    
+
     <AppointmentFormLayout>
         <DxSchedulerSubjectFormLayoutItem />
-        <DxSchedulerAllDayFormLayoutItem />
         <DxSchedulerStartDateFormLayoutItem />
         <DxSchedulerStartTimeFormLayoutItem />
+        <DxSchedulerAllDayFormLayoutItem />
         <DxSchedulerEndDateFormLayoutItem />
         <DxSchedulerEndTimeFormLayoutItem />
         <DxSchedulerRepeatFormLayoutItem />
@@ -134,11 +134,39 @@
         </DxSchedulerCustomFormLayoutItem>
     </AppointmentFormLayout>
 
-    <AppointmentFormHeaderTemplate>
-        <DxSchedulerSaveAppointmentChangesButton />
-        <DxSchedulerDeleteAppointmentButton />
-        <DxSchedulerDiscardAppointmentChangesButton />
-    </AppointmentFormHeaderTemplate>
+    @*     <AppointmentFormHeaderTemplate>
+    <DxSchedulerSaveAppointmentChangesButton />
+    <DxSchedulerDeleteAppointmentButton />
+    <DxSchedulerDiscardAppointmentChangesButton />
+    </AppointmentFormHeaderTemplate> *@
+
+    <ToolbarItems Context="ToolbarItemsContext">
+        <DxSchedulerPreviousIntervalToolbarItem />
+        <DxSchedulerNextIntervalToolbarItem />
+        <DxSchedulerTodayToolbarItem />
+        <DxSchedulerDateNavigatorToolbarItem />
+        <DxToolbarItem>
+            <Template Context="ComboBoxContext">
+                <DxComboBox Data="@groupOptions"
+                            @bind-Value="@currentGroupType"
+                            ValueFieldName="Value"
+                            TextFieldName="Text"
+                            CssClass="w-200" />
+            </Template>
+        </DxToolbarItem>
+
+        <DxSchedulerResourceNavigatorToolbarItem />
+        <DxToolbarItem>
+            <Template Context="AddResourceContext">
+                <AuthorizeView Policy="RequireAdministratorRole">
+                    <DxButton Text="Add Resource" CssClass="dxbl-primary" Click="() => showForm = true" />
+                </AuthorizeView>
+
+            </Template>
+        </DxToolbarItem>
+        <DxSchedulerViewNavigatorToolbarItem />
+
+    </ToolbarItems>
 </DxScheduler>
 
 
@@ -281,32 +309,38 @@
     {
         AppDbContext.Add(e.SourceObject);
         await AppDbContext.SaveChangesAsync();
-        // await EmailService.SendEmailAsync(
-        //     // can use a query to get the email from user via resourceId
-        //     "to@example.com",
-        //     $"Appointment: {e.Subject} Successfully Created",
-        //     EmailService.GenerateAppointmentHtml(e.Subject, e.Start, e.End, e.Location));
+        string email = await GetUserEmailByResourceIdAsync((int)e.ResourceId);
+
+        await EmailService.SendEmailAsync(
+            // can use a query to get the email from user via resourceId
+            email,
+            $"Appointment: {e.Subject} Successfully Created",
+            EmailService.GenerateAppointmentHtml(e.Subject, e.Start, e.End, e.Location, e.Description, "Created"));
     }
 
     private async Task OnAppointmentUpdated(DxSchedulerAppointmentItem e)
     {
         AppDbContext.Update(e.SourceObject);
         await AppDbContext.SaveChangesAsync();
-        // await EmailService.SendEmailAsync(
-        //     "to@example.com",
-        //     $"Appointment: {e.Subject} Successfully Updated",
-        //     EmailService.GenerateAppointmentHtml(e.Subject, e.Start, e.End, e.Location));
+
+        string email = await GetUserEmailByResourceIdAsync((int)e.ResourceId);
+        await EmailService.SendEmailAsync(
+            email,
+            $"Appointment: {e.Subject} Successfully Updated",
+            EmailService.GenerateAppointmentHtml(e.Subject, e.Start, e.End, e.Location, e.Description, "Updated"));
     }
 
     private async Task OnAppointmentDeleted(DxSchedulerAppointmentItem e)
     {
         AppDbContext.Remove(e.SourceObject);
         await AppDbContext.SaveChangesAsync();
-        // await EmailService.SendEmailAsync(
-        //     "to@example.com",
-        //     $"Appointment: {e.Subject} Successfully Deleted",
-        //     EmailService.GenerateAppointmentHtml(
-        //         e.Subject, e.Start, e.End, e.Location));
+
+        string email = await GetUserEmailByResourceIdAsync((int)e.ResourceId);
+        await EmailService.SendEmailAsync(
+            email,
+            $"Appointment: {e.Subject} Successfully Deleted",
+            EmailService.GenerateAppointmentHtml(
+                e.Subject, e.Start, e.End, e.Location, e.Description, "Deleted"));
     }
 
     public void Dispose()
@@ -331,5 +365,14 @@
         await AddResource(resource);
         showForm = false;
         resource = new Resource(); // reset the resource object
+    }
+
+    private async Task<String> GetUserEmailByResourceIdAsync(int resourceId)
+    {
+
+        return await (from r in AppDbContext.Resources
+                      join u in AppDbContext.Users on r.UserId equals u.Iid
+                      where r.Id == resourceId
+                      select u.Email).FirstOrDefaultAsync() ?? "test@email.com";
     }
 }
